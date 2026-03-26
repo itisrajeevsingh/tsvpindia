@@ -147,6 +147,49 @@
             font-family: inherit;
         }
 
+        .manage-list {
+            margin-top: 24px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .manage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .manage-item:last-child {
+            border-bottom: none;
+        }
+
+        .manage-item-info span {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .delete-btn {
+            background: #ffebee;
+            color: #c62828;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .delete-btn:hover {
+            background: #c62828;
+            color: white;
+        }
+
 
         @media (max-width: 768px) {
             .verify-card {
@@ -285,35 +328,53 @@
             <div class="admin-card">
                 <button id="closeAdmin"
                     style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
-                <h3 style="margin-bottom:8px;">Issue Certificate</h3>
-                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:24px;">Records added here are saved
-                    to your browser. Use "Export" to update the site permanently.</p>
+                <h3 style="margin-bottom:8px;">NGO Management</h3>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:24px;">Securely issue or remove
+                    certificates. Admin Key required.</p>
 
-                <form id="issueForm">
-                    <div class="admin-form-group">
-                        <label>Certificate ID</label>
-                        <input type="text" id="newId" placeholder="e.g. TSVP-2024-003" required
-                            style="text-transform:uppercase;">
+                <!-- Admin Key Field -->
+                <div class="admin-form-group">
+                    <label>Admin Access Key</label>
+                    <input type="password" id="adminKey" placeholder="Enter Secure Key" required>
+                </div>
+
+                <div style="border-top:1px solid var(--border); padding-top:20px;">
+                    <h5 style="font-size:0.85rem; margin-bottom:16px; text-transform:uppercase;">Issue Certificate</h5>
+                    <form id="issueForm">
+                        <div class="admin-form-group">
+                            <label>Certificate ID</label>
+                            <input type="text" id="newId" placeholder="e.g. TSVP-2024-003" required
+                                style="text-transform:uppercase;">
+                        </div>
+                        <div class="admin-form-group">
+                            <label>Student Name</label>
+                            <input type="text" id="newName" placeholder="Full Name" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label>Course / trade</label>
+                            <input type="text" id="newCourse" placeholder="e.g. Electrician" required>
+                        </div>
+                        <div class="admin-form-group">
+                            <label>Completion Date</label>
+                            <input type="text" id="newDate" placeholder="e.g. April 2024" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; padding:14px;">Verify &
+                            Issue</button>
+                    </form>
+                </div>
+
+                <!-- Manage Records -->
+                <div style="margin-top:32px; border-top:1px solid var(--border); padding-top:20px;">
+                    <h5 style="font-size:0.85rem; margin-bottom:12px; text-transform:uppercase;">Manage Records</h5>
+                    <div id="manageList" class="manage-list">
+                        <!-- Items rendered by JS -->
                     </div>
-                    <div class="admin-form-group">
-                        <label>Student Name</label>
-                        <input type="text" id="newName" placeholder="Enter Full Name" required>
-                    </div>
-                    <div class="admin-form-group">
-                        <label>Course / Trade</label>
-                        <input type="text" id="newCourse" placeholder="e.g. Health Care / GDA" required>
-                    </div>
-                    <div class="admin-form-group">
-                        <label>Completion Date</label>
-                        <input type="text" id="newDate" placeholder="e.g. April 2024" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%; padding:14px;">Issue
-                        Certificate</button>
+
                     <button type="button" id="exportBtn" class="btn btn-outline"
-                        style="width:100%; margin-top:12px; font-size:0.85rem;">
+                        style="width:100%; margin-top:20px; font-size:0.85rem;">
                         <i class="fas fa-file-export" style="margin-right:8px;"></i> Export Data for GitHub
                     </button>
-                </form>
+                </div>
 
                 <div id="exportArea"
                     style="display:none; margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
@@ -389,6 +450,9 @@
 
     <script src="js/main.js"></script>
     <script>
+        // Secret Key
+        const ADMIN_SECRET = 'TSVP1992TSVP';
+
         // Certificate Database
         let demoDb = {
             'TSVP-2024-001': { name: 'Rajesh Kumar', course: 'Computer Hardware & Networking', date: 'March 2024' },
@@ -396,14 +460,66 @@
             'TSVP-2023-998': { name: 'Amit Verma', course: 'Solar Technician', date: 'December 2023' }
         };
 
-        // Initialize Persistence
+        // Initialize Persistence & UI
         const initDB = () => {
             const saved = localStorage.getItem('tsvp_issued_certs');
+            const deleted = localStorage.getItem('tsvp_deleted_certs');
+
             if (saved) {
                 const localData = JSON.parse(saved);
                 demoDb = { ...demoDb, ...localData };
             }
+
+            if (deleted) {
+                const deletedIds = JSON.parse(deleted);
+                deletedIds.forEach(id => delete demoDb[id]);
+            }
+            renderManageList();
         };
+
+        const renderManageList = () => {
+            const list = document.getElementById('manageList');
+            list.innerHTML = '';
+            Object.keys(demoDb).sort().forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'manage-item';
+                item.innerHTML = `
+                    <div class="manage-item-info">
+                        <strong>${id}</strong>
+                        <span>${demoDb[id].name}</span>
+                    </div>
+                    <button class="delete-btn" onclick="deleteRecord('${id}')">Delete</button>
+                `;
+                list.appendChild(item);
+            });
+        };
+
+        const deleteRecord = (id) => {
+            const key = document.getElementById('adminKey').value;
+            if (key !== ADMIN_SECRET) {
+                alert('Invalid Admin Access Key!');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete record ${id}?`)) {
+                // Delete from current state
+                delete demoDb[id];
+
+                // Track total deletions for static exports
+                const deleted = JSON.parse(localStorage.getItem('tsvp_deleted_certs') || '[]');
+                if (!deleted.includes(id)) deleted.push(id);
+                localStorage.setItem('tsvp_deleted_certs', JSON.stringify(deleted));
+
+                // Remove from local "saved" explicitly too
+                const saved = JSON.parse(localStorage.getItem('tsvp_issued_certs') || '{}');
+                delete saved[id];
+                localStorage.setItem('tsvp_issued_certs', JSON.stringify(saved));
+
+                renderManageList();
+                alert('Record deleted successfully.');
+            }
+        };
+
         initDB();
 
         const form = document.getElementById('verifyForm');
@@ -453,6 +569,13 @@
 
         issueForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            const key = document.getElementById('adminKey').value;
+
+            if (key !== ADMIN_SECRET) {
+                alert('Invalid Admin Access Key!');
+                return;
+            }
+
             const id = document.getElementById('newId').value.trim().toUpperCase();
             const newRecord = {
                 name: document.getElementById('newName').value.trim(),
@@ -460,23 +583,28 @@
                 date: document.getElementById('newDate').value.trim()
             };
 
-            // Update local state
             demoDb[id] = newRecord;
 
-            // Save to localStorage
-            const saved = localStorage.getItem('tsvp_issued_certs');
-            const localData = saved ? JSON.parse(saved) : {};
-            localData[id] = newRecord;
-            localStorage.setItem('tsvp_issued_certs', JSON.stringify(localData));
+            const saved = JSON.parse(localStorage.getItem('tsvp_issued_certs') || '{}');
+            saved[id] = newRecord;
+            localStorage.setItem('tsvp_issued_certs', JSON.stringify(saved));
+
+            // Remove from deleted list if it was there
+            const deleted = JSON.parse(localStorage.getItem('tsvp_deleted_certs') || '[]');
+            const idx = deleted.indexOf(id);
+            if (idx > -1) {
+                deleted.splice(idx, 1);
+                localStorage.setItem('tsvp_deleted_certs', JSON.stringify(deleted));
+            }
 
             alert('Successfully issued certificate: ' + id);
+            renderManageList();
             issueForm.reset();
-            adminModal.style.display = 'none';
         });
 
         exportBtn.addEventListener('click', () => {
             exportArea.style.display = 'block';
-            jsonOutput.value = `// Copy and replace the demoDb section in verify.html with this:
+            jsonOutput.value = `// Copy and replace the demoDb section in verify.html with this current state:
 const demoDb = ${JSON.stringify(demoDb, null, 4)};`;
         });
     </script>

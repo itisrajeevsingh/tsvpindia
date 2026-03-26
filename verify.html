@@ -110,10 +110,21 @@
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(5px);
             z-index: 9999;
-            align-items: center;
+            overflow-y: auto;
+            /* Enable scrolling for the whole modal */
+            padding: 40px 20px;
+            display: none;
+            /* Reset display for flex context below */
+            align-items: flex-start;
+            /* Start from top instead of center to prevent top-cut */
             justify-content: center;
-            padding: 20px;
         }
+
+        /* Flex utilities for modal */
+        #adminModal.active {
+            display: flex;
+        }
+
 
         .admin-card {
             background: white;
@@ -561,11 +572,12 @@
         const exportArea = document.getElementById('exportArea');
         const jsonOutput = document.getElementById('jsonOutput');
 
-        adminBtn.addEventListener('click', () => adminModal.style.display = 'flex');
-        closeAdmin.addEventListener('click', () => adminModal.style.display = 'none');
+        adminBtn.addEventListener('click', () => adminModal.classList.add('active'));
+        closeAdmin.addEventListener('click', () => adminModal.classList.remove('active'));
         window.addEventListener('click', (e) => {
-            if (e.target === adminModal) adminModal.style.display = 'none';
+            if (e.target === adminModal) adminModal.classList.remove('active');
         });
+
 
         issueForm.addEventListener('submit', (e) => {
             e.preventDefault();

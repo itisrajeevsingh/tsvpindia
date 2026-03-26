@@ -99,6 +99,55 @@
             }
         }
 
+        /* Admin Modal Styles */
+        #adminModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .admin-form-group {
+            margin-bottom: 20px;
+        }
+
+        .admin-form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--secondary-dark);
+            text-transform: uppercase;
+        }
+
+        .admin-form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+        }
+
+
         @media (max-width: 768px) {
             .verify-card {
                 padding: 32px 20px;
@@ -159,7 +208,7 @@
         </div>
     </section>
 
-    <div class="container">
+    <div class="container" style="position: relative;">
         <div class="verify-card">
             <div class="verify-icon-top" style="font-size: 3rem; margin-bottom: 16px;">🛡️</div>
             <h3>Authentication Portal</h3>
@@ -175,7 +224,7 @@
                 </button>
             </form>
 
-            <!-- Loading State (Optional) -->
+            <!-- Loading State -->
             <div id="loading" style="display: none; margin-top: 24px;">
                 <i class="fas fa-spinner fa-spin" style="color: var(--primary); font-size: 1.5rem;"></i>
                 <p style="margin-top: 8px; font-size: 0.85rem;">Searching database...</p>
@@ -216,9 +265,62 @@
                         <strong>Invalid Certificate ID</strong>
                     </div>
                     <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 8px;">
-                        The ID you entered was not found in our records. Please double-check the characters or contact
-                        our support office.
+                        The ID you entered was not found in our records. Please contact support if you believe this is
+                        an error.
                     </p>
+                </div>
+            </div>
+
+            <!-- Subtle Admin Trigger -->
+            <div style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <button id="adminBtn"
+                    style="background:transparent;border:none;color:var(--text-muted);font-size:0.7rem;cursor:pointer;opacity:0.5;letter-spacing:1px;text-transform:uppercase;">
+                    <i class="fas fa-lock" style="margin-right:4px;"></i> NGO Management Console
+                </button>
+            </div>
+        </div>
+
+        <!-- Admin Modal -->
+        <div id="adminModal">
+            <div class="admin-card">
+                <button id="closeAdmin"
+                    style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+                <h3 style="margin-bottom:8px;">Issue Certificate</h3>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:24px;">Records added here are saved
+                    to your browser. Use "Export" to update the site permanently.</p>
+
+                <form id="issueForm">
+                    <div class="admin-form-group">
+                        <label>Certificate ID</label>
+                        <input type="text" id="newId" placeholder="e.g. TSVP-2024-003" required
+                            style="text-transform:uppercase;">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Student Name</label>
+                        <input type="text" id="newName" placeholder="Enter Full Name" required>
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Course / Trade</label>
+                        <input type="text" id="newCourse" placeholder="e.g. Health Care / GDA" required>
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Completion Date</label>
+                        <input type="text" id="newDate" placeholder="e.g. April 2024" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; padding:14px;">Issue
+                        Certificate</button>
+                    <button type="button" id="exportBtn" class="btn btn-outline"
+                        style="width:100%; margin-top:12px; font-size:0.85rem;">
+                        <i class="fas fa-file-export" style="margin-right:8px;"></i> Export Data for GitHub
+                    </button>
+                </form>
+
+                <div id="exportArea"
+                    style="display:none; margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+                    <p style="font-size:0.75rem; margin-bottom:10px; font-weight:600;">Copy this to update the website:
+                    </p>
+                    <textarea id="jsonOutput" readonly
+                        style="width:100%; height:120px; font-family:monospace; font-size:0.7rem; padding:10px; background:#f8f9fa; border:1px solid var(--border); border-radius:8px;"></textarea>
                 </div>
             </div>
         </div>
@@ -287,12 +389,22 @@
 
     <script src="js/main.js"></script>
     <script>
-        // Verification Prototype Logic
-        const demoDb = {
+        // Certificate Database
+        let demoDb = {
             'TSVP-2024-001': { name: 'Rajesh Kumar', course: 'Computer Hardware & Networking', date: 'March 2024' },
             'TSVP-2024-002': { name: 'Priya Singh', course: 'Fashion Designing', date: 'February 2024' },
             'TSVP-2023-998': { name: 'Amit Verma', course: 'Solar Technician', date: 'December 2023' }
         };
+
+        // Initialize Persistence
+        const initDB = () => {
+            const saved = localStorage.getItem('tsvp_issued_certs');
+            if (saved) {
+                const localData = JSON.parse(saved);
+                demoDb = { ...demoDb, ...localData };
+            }
+        };
+        initDB();
 
         const form = document.getElementById('verifyForm');
         const loading = document.getElementById('loading');
@@ -304,7 +416,6 @@
             e.preventDefault();
             const id = document.getElementById('certId').value.trim().toUpperCase();
 
-            // UI States
             result.style.display = 'none';
             successDiv.style.display = 'none';
             errorDiv.style.display = 'none';
@@ -322,7 +433,51 @@
                 } else {
                     errorDiv.style.display = 'block';
                 }
-            }, 1200);
+            }, 800);
+        });
+
+        // Admin Functionality
+        const adminBtn = document.getElementById('adminBtn');
+        const adminModal = document.getElementById('adminModal');
+        const closeAdmin = document.getElementById('closeAdmin');
+        const issueForm = document.getElementById('issueForm');
+        const exportBtn = document.getElementById('exportBtn');
+        const exportArea = document.getElementById('exportArea');
+        const jsonOutput = document.getElementById('jsonOutput');
+
+        adminBtn.addEventListener('click', () => adminModal.style.display = 'flex');
+        closeAdmin.addEventListener('click', () => adminModal.style.display = 'none');
+        window.addEventListener('click', (e) => {
+            if (e.target === adminModal) adminModal.style.display = 'none';
+        });
+
+        issueForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('newId').value.trim().toUpperCase();
+            const newRecord = {
+                name: document.getElementById('newName').value.trim(),
+                course: document.getElementById('newCourse').value.trim(),
+                date: document.getElementById('newDate').value.trim()
+            };
+
+            // Update local state
+            demoDb[id] = newRecord;
+
+            // Save to localStorage
+            const saved = localStorage.getItem('tsvp_issued_certs');
+            const localData = saved ? JSON.parse(saved) : {};
+            localData[id] = newRecord;
+            localStorage.setItem('tsvp_issued_certs', JSON.stringify(localData));
+
+            alert('Successfully issued certificate: ' + id);
+            issueForm.reset();
+            adminModal.style.display = 'none';
+        });
+
+        exportBtn.addEventListener('click', () => {
+            exportArea.style.display = 'block';
+            jsonOutput.value = `// Copy and replace the demoDb section in verify.html with this:
+const demoDb = ${JSON.stringify(demoDb, null, 4)};`;
         });
     </script>
 </body>
